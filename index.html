@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Puyo AI</title>
+</head>
+<body>
+  <h1>Puyo AI Test</h1>
+
+  <script type="module">
+    import init from "./puyoAI_wasm.mjs";
+
+    init().then(() => {
+      console.log("WASM loaded");
+    });
+  </script>
+</body>
+</html>

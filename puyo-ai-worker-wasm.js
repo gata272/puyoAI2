@@ -12,6 +12,7 @@ async function initWasm() {
     try {
         const module = await puyoAIModule();
         aiInstance = module;
+        // cwrap: function name, return type, argument types
         aiChooseMove = module.cwrap('ai_choose_move', 'number', ['number', 'number', 'number', 'number', 'number']);
         console.log("WASM AI Initialized");
     } catch (e) {
@@ -23,20 +24,21 @@ const wasmInitPromise = initWasm();
 
 self.onmessage = async function(e) {
     await wasmInitPromise;
-    if (!aiChooseMove) return;
+    if (!aiChooseMove) {
+        console.error("AI ChooseMove function not ready");
+        return;
+    }
 
     const { boardBuffer, pieceBuffer } = e.data;
     
-    // boardBuffer: Uint8Array(84) - 6x14 board
-    // pieceBuffer: Uint8Array(6) - [main1, sub1, main2, sub2, main3, sub3]
+    // boardBuffer: Int32Array(84) - 6x14 board
+    // pieceBuffer: Int32Array(6) - [main1, sub1, main2, sub2, main3, sub3]
 
-    // Allocate memory in WASM for board data
+    // Allocate memory in WASM for board data (Int32Array)
     const boardPtr = aiInstance._malloc(boardBuffer.length * 4); // int is 4 bytes
-    const boardData = new Int32Array(aiInstance.HEAP32.buffer, boardPtr, boardBuffer.length);
     
-    for (let i = 0; i < boardBuffer.length; i++) {
-        boardData[i] = boardBuffer[i];
-    }
+    // Copy data to WASM heap
+    aiInstance.HEAP32.set(boardBuffer, boardPtr >> 2);
 
     // Call AI
     // int ai_choose_move(int* boardData, int subColor, int mainColor, int nextSub, int nextMain)

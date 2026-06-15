@@ -39,18 +39,29 @@
       updateStatus("AI 思考完了");
       
       // Execute move in puyoSim.js
-      if (typeof global.executeAIMove === 'function') {
-        global.executeAIMove(data.x, data.rotation);
-      } else {
-        // Fallback: manually trigger drop if executeAIMove is not exposed
-        console.log("AI Move:", data.x, data.rotation);
-        // In pp-sim2, we might need to simulate key presses or call internal functions
-        if (global.currentPuyo) {
-            global.currentPuyo.x = data.x;
-            global.currentPuyo.rotation = data.rotation;
-            if (typeof global.hardDrop === 'function') global.hardDrop();
-        }
-      }
+      executeMove(data.x, data.rotation);
+    }
+  }
+
+  function executeMove(targetX, targetRotation) {
+    if (global.gameState !== 'playing' || !global.currentPuyo) return;
+
+    // 1. Set rotation
+    // In puyoSim.js, rotation is 0..3
+    global.currentPuyo.rotation = targetRotation;
+
+    // 2. Set X position
+    // We need to be careful about collision when moving X
+    global.currentPuyo.mainX = targetX;
+
+    // 3. Trigger Hard Drop
+    if (typeof global.hardDrop === 'function') {
+        global.hardDrop();
+    } else {
+        // Fallback if hardDrop is not global
+        console.log("AI Move Execution Fallback");
+        while (global.movePuyo(0, -1, undefined, false)) { }
+        if (typeof global.lockPuyo === 'function') global.lockPuyo();
     }
   }
 
@@ -64,6 +75,7 @@
     if (global.gameState !== 'playing' || !global.currentPuyo) return;
 
     // Prepare board data for WASM
+    // board is 2D array [y][x]
     const board = global.board; 
     const nextQueue = global.nextQueue;
     const queueIndex = global.queueIndex;
@@ -71,14 +83,15 @@
 
     if (!board || !currentPuyo) return;
 
-    const flatBoard = new Uint8Array(6 * 14);
+    // Convert 2D board to 1D flat array for C++
+    const flatBoard = new Int32Array(6 * 14);
     for (let y = 0; y < 14; y++) {
       for (let x = 0; x < 6; x++) {
         flatBoard[y * 6 + x] = board[y][x];
       }
     }
 
-    const pieces = new Uint8Array(6);
+    const pieces = new Int32Array(6);
     pieces[0] = currentPuyo.mainColor;
     pieces[1] = currentPuyo.subColor;
     
@@ -110,10 +123,14 @@
     updateUI();
   };
 
+  // Compatibility with existing UI buttons
+  global.toggleAIAuto = global.toggleAI;
+  global.runPuyoAI = think;
+
   function updateUI() {
     const btn = document.getElementById('ai-auto-button');
     if (btn) {
-        btn.textContent = STATE.autoEnabled ? 'AI: ON' : 'AI: OFF';
+        btn.textContent = STATE.autoEnabled ? 'AI自動: ON' : 'AI自動: OFF';
         btn.style.backgroundColor = STATE.autoEnabled ? '#27ae60' : '#8e44ad';
     }
   }

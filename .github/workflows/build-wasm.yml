@@ -2,8 +2,8 @@ name: Build and Deploy WASM AI
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [ main ]  # mainブランチにpushされた時に実行
+  workflow_dispatch:      # 手動実行も可能にする
 
 permissions:
   contents: read
@@ -25,6 +25,7 @@ jobs:
 
       - name: Build WASM
         run: |
+          # Emscripten環境を有効化してビルド
           source emsdk/emsdk_env.sh
           emcc puyoAI.cpp -O3 \
             -sMODULARIZE=1 \
@@ -40,7 +41,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '.'  # リポジトリの全ファイルをデプロイ対象にする
 
       - name: Deploy to GitHub Pages
         id: deployment

@@ -2,9 +2,10 @@
  * Bridge between pp-sim2 UI and puyoAI_wasm.wasm using factory function
  *
  * Fix:
- * - Emscripten-generated module does not expose HEAP32 publicly by default.
+ * - The generated Emscripten module does not expose HEAP32 publicly by default.
  * - This worker fetches the generated module source, patches updateMemoryViews()
  *   to publish heap views onto Module, then imports the patched source.
+ * - Works whether the .mjs source is pretty-printed or minified.
  */
 
 let createPuyoAI = null;
@@ -23,32 +24,20 @@ async function loadPatchedWasmFactory() {
 
     let source = await response.text();
 
-    // This marker matches the current generated puyoAI_wasm.mjs source.
-    // If the WASM module is regenerated and this string changes, patching must be updated.
-    const needle = 'HEAPU64=new BigUint64Array(b)}function preRun()';
-    const replacement = [
-        'HEAPU64=new BigUint64Array(b);',
-        'Module["HEAP8"]=HEAP8;',
-        'Module["HEAP16"]=HEAP16;',
-        'Module["HEAP32"]=HEAP32;',
-        'Module["HEAPU8"]=HEAPU8;',
-        'Module["HEAPU16"]=HEAPU16;',
-        'Module["HEAPU32"]=HEAPU32;',
-        'Module["HEAPF32"]=HEAPF32;',
-        'Module["HEAPF64"]=HEAPF64;',
-        'Module["HEAP64"]=HEAP64;',
-        'Module["HEAPU64"]=HEAPU64;',
-        'Module["wasmMemory"]=wasmMemory;',
-        '}function preRun()'
-    ].join('');
+    // Minified or pretty-printed both handled by regex.
+    const updateMemoryViewsPattern =
+        /function updateMemoryViews\(\)\{var b=wasmMemory\.buffer;HEAP8=new Int8Array\(b\);HEAP16=new Int16Array\(b\);HEAPU8=new Uint8Array\(b\);HEAPU16=new Uint16Array\(b\);HEAP32=new Int32Array\(b\);HEAPU32=new Uint32Array\(b\);HEAPF32=new Float32Array\(b\);HEAPF64=new Float64Array\(b\);HEAP64=new BigInt64Array\(b\);HEAPU64=new BigUint64Array\(b\)\}/;
 
-    if (!source.includes(needle)) {
+    const replacement =
+        'function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b);Module["HEAP8"]=HEAP8;Module["HEAP16"]=HEAP16;Module["HEAP32"]=HEAP32;Module["HEAPU8"]=HEAPU8;Module["HEAPU16"]=HEAPU16;Module["HEAPU32"]=HEAPU32;Module["HEAPF32"]=HEAPF32;Module["HEAPF64"]=HEAPF64;Module["HEAP64"]=HEAP64;Module["HEAPU64"]=HEAPU64;Module["wasmMemory"]=wasmMemory;}';
+
+    if (!updateMemoryViewsPattern.test(source)) {
         throw new Error(
-            'Failed to patch WASM source: expected heap-view marker not found'
+            'Failed to patch WASM source: updateMemoryViews() pattern not found'
         );
     }
 
-    source = source.replace(needle, replacement);
+    source = source.replace(updateMemoryViewsPattern, replacement);
 
     const blob = new Blob([source], { type: 'text/javascript' });
     const blobUrl = URL.createObjectURL(blob);
@@ -69,6 +58,22 @@ function log(msg) {
     self.postMessage({ action: 'LOG', message: msg });
 }
 
+function getHeap32(instance) {
+    if (instance.HEAP32) return instance.HEAP32;
+
+    const memory =
+        instance.wasmMemory ||
+        instance.memory ||
+        instance.asm?.memory;
+
+    if (memory && memory.buffer) {
+        instance.HEAP32 = new Int32Array(memory.buffer);
+        return instance.HEAP32;
+    }
+
+    return null;
+}
+
 // Initialize WASM Module
 async function initWasm() {
     log('WASM Module factory initialization started...');
@@ -77,25 +82,16 @@ async function initWasm() {
         const module = await createFactory();
         aiInstance = module;
 
-        // cwrap が使えることを初期化成功の基準にする
         if (typeof aiInstance.cwrap === 'function') {
-            // HEAP32 が公開されていない場合は、公開された memory から生成する
-            if (!aiInstance.HEAP32) {
-                const memory =
-                    aiInstance.wasmMemory ||
-                    aiInstance.memory ||
-                    aiInstance.asm?.memory;
-
-                if (memory && memory.buffer) {
-                    aiInstance.HEAP32 = new Int32Array(memory.buffer);
-                }
-            }
-
             aiChooseMove = aiInstance.cwrap(
                 'ai_choose_move',
                 'number',
                 ['number', 'number', 'number', 'number', 'number']
             );
+
+            if (!getHeap32(aiInstance)) {
+                throw new Error('HEAP32 unavailable after module init');
+            }
 
             log('WASM AI Initialized successfully');
         } else {
@@ -120,23 +116,12 @@ self.onmessage = async function (e) {
     const { boardBuffer, pieceBuffer } = e.data;
 
     try {
-        if (!aiInstance.HEAP32) {
-            const memory =
-                aiInstance.wasmMemory ||
-                aiInstance.memory ||
-                aiInstance.asm?.memory;
-
-            if (memory && memory.buffer) {
-                aiInstance.HEAP32 = new Int32Array(memory.buffer);
-            }
-        }
-
-        if (!aiInstance.HEAP32) {
+        const HEAP32 = getHeap32(aiInstance);
+        if (!HEAP32) {
             log('ERROR: HEAP32 is unavailable');
             return;
         }
 
-        // Allocate memory in WASM for board data (Int32Array)
         const boardPtr = aiInstance._malloc(boardBuffer.length * 4);
         if (!boardPtr) {
             log('ERROR: Failed to allocate memory in WASM');
@@ -144,10 +129,8 @@ self.onmessage = async function (e) {
         }
 
         try {
-            // Copy data to WASM heap
-            aiInstance.HEAP32.set(boardBuffer, boardPtr >> 2);
+            HEAP32.set(boardBuffer, boardPtr >> 2);
 
-            // Call AI
             const result = aiChooseMove(
                 boardPtr,
                 pieceBuffer[1], // sub1
@@ -156,7 +139,6 @@ self.onmessage = async function (e) {
                 pieceBuffer[2]  // main2
             );
 
-            // Parse result: x * 10 + rot
             const x = Math.floor(result / 10);
             const rot = result % 10;
 
@@ -166,7 +148,6 @@ self.onmessage = async function (e) {
                 rotation: rot
             });
         } finally {
-            // Free memory
             aiInstance._free(boardPtr);
         }
     } catch (err) {

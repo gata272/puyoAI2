@@ -6,7 +6,7 @@
 
   const AI_CONFIG = {
     WORKER_PATH: './puyo-ai-worker-wasm.js',
-    AUTO_TICK_MS: 500, // Slightly slower for easier debugging
+    AUTO_TICK_MS: 500,
     THINK_TIMEOUT_MS: 12000
   };
 
@@ -35,8 +35,6 @@
 
   function handleWorkerMessage(e) {
     const data = e.data;
-    console.log("[AI] Message from Worker:", data);
-    
     if (data.action === 'THINK_DONE') {
       STATE.busy = false;
       updateStatus("AI 思考完了: x=" + data.x + ", rot=" + data.rotation);
@@ -47,35 +45,23 @@
   }
 
   function executeMove(targetX, targetRotation) {
-    // Try to find global variables even if they are not on 'window'
-    const board = global.board || window.board;
-    const currentPuyo = global.currentPuyo || window.currentPuyo;
-    const gameState = global.gameState || window.gameState;
+    const _currentPuyo = window.currentPuyo;
+    const _gameState = window.gameState;
 
-    console.log("[AI] Executing Move. State:", gameState, "Puyo:", !!currentPuyo);
-
-    if (gameState !== 'playing' || !currentPuyo) {
-        console.warn("[AI] Cannot execute move: Not in playing state or no current puyo");
+    if (_gameState !== 'playing' || !_currentPuyo) {
+        console.warn("[AI] Cannot execute move. State:", _gameState, "Puyo:", !!_currentPuyo);
         return;
     }
 
     try {
-        console.log("[AI] Setting Puyo: x=" + targetX + ", rot=" + targetRotation);
-        currentPuyo.rotation = targetRotation;
-        currentPuyo.mainX = targetX;
+        console.log("[AI] Executing Move: x=" + targetX + ", rot=" + targetRotation);
+        _currentPuyo.rotation = targetRotation;
+        _currentPuyo.mainX = targetX;
 
-        if (typeof global.hardDrop === 'function') {
-            console.log("[AI] Calling global.hardDrop()");
-            global.hardDrop();
-        } else if (typeof window.hardDrop === 'function') {
-            console.log("[AI] Calling window.hardDrop()");
+        if (typeof window.hardDrop === 'function') {
             window.hardDrop();
         } else {
-            console.warn("[AI] hardDrop function not found, attempting manual lock");
-            if (typeof global.movePuyo === 'function') {
-                while (global.movePuyo(0, -1, undefined, false)) { }
-                if (typeof global.lockPuyo === 'function') global.lockPuyo();
-            }
+            console.warn("[AI] hardDrop not found on window");
         }
     } catch (err) {
         console.error("[AI] Error during move execution:", err);
@@ -83,28 +69,29 @@
   }
 
   function updateStatus(text) {
-    console.log("[AI Status Update]:", text);
     const el = document.getElementById('ai-status');
     if (el) el.textContent = text;
   }
 
   function think() {
-    if (!STATE.workerReady) {
-        console.warn("[AI] Worker not ready yet");
-        return;
-    }
-    if (STATE.busy) {
-        console.log("[AI] Still busy thinking...");
+    if (!STATE.workerReady || STATE.busy) return;
+
+    // Access variables from window object
+    const _board = window.board;
+    const _nextQueue = window.nextQueue;
+    const _queueIndex = window.queueIndex;
+    const _currentPuyo = window.currentPuyo;
+    const _gameState = window.gameState;
+
+    if (!_board || !_currentPuyo) {
+        console.log("[AI] Waiting for board/puyo to be available...");
         return;
     }
 
-    const board = global.board || window.board;
-    const nextQueue = global.nextQueue || window.nextQueue;
-    const queueIndex = global.queueIndex || window.queueIndex;
-    const currentPuyo = global.currentPuyo || window.currentPuyo;
-    const gameState = global.gameState || window.gameState;
-
-    if (gameState !== 'playing' || !currentPuyo) return;
+    if (_gameState !== 'playing') {
+        // console.log("[AI] Game not in playing state:", _gameState);
+        return;
+    }
 
     console.log("[AI] Starting thinking process...");
 
@@ -112,22 +99,21 @@
         const flatBoard = new Int32Array(6 * 14);
         for (let y = 0; y < 14; y++) {
           for (let x = 0; x < 6; x++) {
-            flatBoard[y * 6 + x] = board[y][x];
+            flatBoard[y * 6 + x] = _board[y][x];
           }
         }
 
         const pieces = new Int32Array(6);
-        pieces[0] = currentPuyo.mainColor;
-        pieces[1] = currentPuyo.subColor;
+        pieces[0] = _currentPuyo.mainColor;
+        pieces[1] = _currentPuyo.subColor;
         
-        if (nextQueue && nextQueue[queueIndex]) {
-          pieces[2] = nextQueue[queueIndex][1]; // main
-          pieces[3] = nextQueue[queueIndex][0]; // sub
+        if (_nextQueue && _nextQueue[_queueIndex]) {
+          pieces[2] = _nextQueue[_queueIndex][1]; // main
+          pieces[3] = _nextQueue[_queueIndex][0]; // sub
         }
 
         STATE.busy = true;
         updateStatus("AI 思考中...");
-        console.log("[AI] Sending data to Worker. Board size:", flatBoard.length);
         STATE.worker.postMessage({
           boardBuffer: flatBoard,
           pieceBuffer: pieces
@@ -139,7 +125,6 @@
   }
 
   global.toggleAI = function() {
-    console.log("[AI] Toggle Button Clicked. Current State:", STATE.autoEnabled);
     STATE.autoEnabled = !STATE.autoEnabled;
     if (STATE.autoEnabled) {
       initWorker();
@@ -163,6 +148,6 @@
     }
   }
 
-  console.log("[AI] puyoAI_updated.js loaded and initialized");
+  console.log("[AI] puyoAI_updated.js loaded");
 
 })(window);

@@ -147,14 +147,14 @@ function debugRecordChainEpisode(chainLength) {
 }
 
 // ゲームの状態管理
-let board = [];
-let currentPuyo = null;
-let nextQueue = [];
-let queueIndex = 0;
+var board = [];
+var currentPuyo = null;
+var nextQueue = [];
+var queueIndex = 0;
 
-let score = 0;
-let chainCount = 0;
-let gameState = 'playing'; // 'playing', 'chaining', 'gameover', 'editing', 'setting'
+var score = 0;
+var chainCount = 0;
+var gameState = 'playing'; // 'playing', 'chaining', 'gameover', 'editing', 'setting'
 let currentEditColor = COLORS.EMPTY;
 let editingNextPuyos = [];
 let nextEdited = false;

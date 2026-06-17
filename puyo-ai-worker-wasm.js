@@ -1,5 +1,5 @@
 /* puyo-ai-worker-wasm.js
- * Bridge between pp-sim2 UI and puyoAI_wasm.wasm
+ * Bridge between pp-sim2 UI and puyoAI_wasm.wasm with logging
  */
 
 import puyoAIModule from './puyoAI_wasm.mjs';
@@ -7,16 +7,21 @@ import puyoAIModule from './puyoAI_wasm.mjs';
 let aiInstance = null;
 let aiChooseMove = null;
 
+function log(msg) {
+    self.postMessage({ action: 'LOG', message: msg });
+}
+
 // Initialize WASM Module
 async function initWasm() {
+    log("WASM Module loading started...");
     try {
         const module = await puyoAIModule();
         aiInstance = module;
-        // cwrap: function name, return type, argument types
         aiChooseMove = module.cwrap('ai_choose_move', 'number', ['number', 'number', 'number', 'number', 'number']);
-        console.log("WASM AI Initialized");
+        log("WASM AI Initialized successfully");
     } catch (e) {
-        console.error("Failed to initialize WASM AI:", e);
+        log("CRITICAL ERROR: Failed to initialize WASM AI: " + e.message);
+        console.error(e);
     }
 }
 
@@ -25,41 +30,48 @@ const wasmInitPromise = initWasm();
 self.onmessage = async function(e) {
     await wasmInitPromise;
     if (!aiChooseMove) {
-        console.error("AI ChooseMove function not ready");
+        log("ERROR: ai_choose_move function is not available");
         return;
     }
 
     const { boardBuffer, pieceBuffer } = e.data;
-    
-    // boardBuffer: Int32Array(84) - 6x14 board
-    // pieceBuffer: Int32Array(6) - [main1, sub1, main2, sub2, main3, sub3]
+    log("Worker received think request. Piece: " + pieceBuffer[0] + "," + pieceBuffer[1]);
 
-    // Allocate memory in WASM for board data (Int32Array)
-    const boardPtr = aiInstance._malloc(boardBuffer.length * 4); // int is 4 bytes
-    
-    // Copy data to WASM heap
-    aiInstance.HEAP32.set(boardBuffer, boardPtr >> 2);
+    try {
+        // Allocate memory in WASM for board data (Int32Array)
+        const boardPtr = aiInstance._malloc(boardBuffer.length * 4);
+        if (!boardPtr) {
+            log("ERROR: Failed to allocate memory in WASM");
+            return;
+        }
+        
+        // Copy data to WASM heap
+        aiInstance.HEAP32.set(boardBuffer, boardPtr >> 2);
 
-    // Call AI
-    // int ai_choose_move(int* boardData, int subColor, int mainColor, int nextSub, int nextMain)
-    const result = aiChooseMove(
-        boardPtr,
-        pieceBuffer[1], // sub1
-        pieceBuffer[0], // main1
-        pieceBuffer[3], // sub2
-        pieceBuffer[2]  // main2
-    );
+        // Call AI
+        log("Calling WASM ai_choose_move...");
+        const result = aiChooseMove(
+            boardPtr,
+            pieceBuffer[1], // sub1
+            pieceBuffer[0], // main1
+            pieceBuffer[3], // sub2
+            pieceBuffer[2]  // main2
+        );
+        log("WASM call returned: " + result);
 
-    // Free memory
-    aiInstance._free(boardPtr);
+        // Free memory
+        aiInstance._free(boardPtr);
 
-    // Parse result: x * 10 + rot
-    const x = Math.floor(result / 10);
-    const rot = result % 10;
+        // Parse result: x * 10 + rot
+        const x = Math.floor(result / 10);
+        const rot = result % 10;
 
-    self.postMessage({
-        action: 'THINK_DONE',
-        x: x,
-        rotation: rot
-    });
+        self.postMessage({
+            action: 'THINK_DONE',
+            x: x,
+            rotation: rot
+        });
+    } catch (err) {
+        log("ERROR during WASM execution: " + err.message);
+    }
 };

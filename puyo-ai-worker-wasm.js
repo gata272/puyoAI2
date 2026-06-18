@@ -2,10 +2,11 @@
  * Bridge between pp-sim2 UI and puyoAI_wasm.wasm using factory function
  *
  * Fix:
- * - The generated Emscripten module does not expose HEAP32 publicly by default.
+ * - Emscripten-generated module does not expose HEAP32 publicly by default.
  * - This worker fetches the generated module source, patches updateMemoryViews()
  *   to publish heap views onto Module, then imports the patched source.
- * - Works whether the .mjs source is pretty-printed or minified.
+ * - locateFile is passed explicitly so puyoAI_wasm.wasm resolves correctly even
+ *   when the module is imported from a Blob URL.
  */
 
 let createPuyoAI = null;
@@ -24,7 +25,7 @@ async function loadPatchedWasmFactory() {
 
     let source = await response.text();
 
-    // Minified or pretty-printed both handled by regex.
+    // Works for both minified and non-minified output.
     const updateMemoryViewsPattern =
         /function updateMemoryViews\(\)\{var b=wasmMemory\.buffer;HEAP8=new Int8Array\(b\);HEAP16=new Int16Array\(b\);HEAPU8=new Uint8Array\(b\);HEAPU16=new Uint16Array\(b\);HEAP32=new Int32Array\(b\);HEAPU32=new Uint32Array\(b\);HEAPF32=new Float32Array\(b\);HEAPF64=new Float64Array\(b\);HEAP64=new BigInt64Array\(b\);HEAPU64=new BigUint64Array\(b\)\}/;
 
@@ -79,7 +80,14 @@ async function initWasm() {
     log('WASM Module factory initialization started...');
     try {
         const createFactory = await loadPatchedWasmFactory();
-        const module = await createFactory();
+
+        // IMPORTANT:
+        // This fixes "puyoAI_wasm.wasm cannot be parsed as a URL."
+        // The wasm file is resolved from the real module location, not the Blob URL.
+        const module = await createFactory({
+            locateFile: (path) => new URL(path, wasmModuleUrl).href
+        });
+
         aiInstance = module;
 
         if (typeof aiInstance.cwrap === 'function') {

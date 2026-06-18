@@ -396,61 +396,62 @@ static double scoreTurnResult(const ResolvedBoard& res) {
 
 // --- AI Core ---
 
+static int sharedBoard[N];
+
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE
-int ai_choose_move(int* boardData, int subColor, int mainColor, int nextSub, int nextMain) {
-    Board currentBoard;
-    for (int i = 0; i < N; ++i) currentBoard[i] = boardData[i];
+void set_board_cell(int index, int value) {
+    if (index >= 0 && index < N) sharedBoard[index] = value;
+}
 
-    struct Move { int x, rot; double score; };
-    std::vector<Move> firstMoves;
+EMSCRIPTEN_KEEPALIVE
+int ai_choose_move_v2(int subColor, int mainColor, int nextSub, int nextMain) {
+    Board b;
+    for(int i=0; i<N; ++i) b[i] = sharedBoard[i];
+
+    double bestScore = -std::numeric_limits<double>::infinity();
+    int bestMove = 0; // x * 10 + rot
 
     for (int x = 0; x < W; ++x) {
         for (int rot = 0; rot < 4; ++rot) {
-            // Find drop position
-            Board b = currentBoard;
-            int mainX = x, subX = x;
-            if(rot == 1) subX = x-1; else if(rot == 3) subX = x+1;
-            if(!inBounds(mainX, 0) || !inBounds(subX, 0)) continue;
+            Board tb = b;
+            int x1 = x, y1 = H - 1;
+            int x2 = x, y2 = H - 1;
 
-            // Simplified drop
-            auto drop = [&](Board& bd, int col, int color) {
-                for(int y=0; y<H; ++y) if(bd[idx(col, y)] == EMPTY) { bd[idx(col, y)] = color; return true; }
-                return false;
-            };
+            if (rot == 0) { x2 = x; y2 = H - 1; x1 = x; y1 = H - 2; } // Vertical, main below
+            else if (rot == 1) { x1 = x; y1 = H - 1; x2 = x + 1; y2 = H - 1; } // Horizontal, main left
+            else if (rot == 2) { x1 = x; y1 = H - 1; x2 = x; y2 = H - 2; } // Vertical, main above
+            else if (rot == 3) { x1 = x; y1 = H - 1; x2 = x - 1; y2 = H - 1; } // Horizontal, main right
 
-            bool ok = true;
-            if(rot == 0) { ok &= drop(b, x, mainColor); ok &= drop(b, x, subColor); }
-            else if(rot == 2) { ok &= drop(b, x, subColor); ok &= drop(b, x, mainColor); }
-            else { ok &= drop(b, mainX, mainColor); ok &= drop(b, subX, subColor); }
-            
-            if(!ok) continue;
-            applyGravity(b);
-            ResolvedBoard res = simulate(b);
-            double s = scoreTurnResult(res);
-            if(res.totalChains == 0) s += scoreBoardFeatures(extractFeatures(res.board));
-            firstMoves.push_back({x, rot, s});
+            if (x1 < 0 || x1 >= W || x2 < 0 || x2 >= W) continue;
+            if (tb[idx(x1, H-1)] != EMPTY || tb[idx(x2, H-1)] != EMPTY) continue;
+
+            tb[idx(x1, H-1)] = mainColor;
+            tb[idx(x2, H-1)] = subColor;
+            applyGravity(tb);
+
+            ResolvedBoard res = simulate(tb);
+            double score = scoreTurnResult(res);
+            if (!res.topout) {
+                Features f = extractFeatures(res.board);
+                score += scoreBoardFeatures(f);
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = x * 10 + rot;
+            }
         }
     }
+    return bestMove;
+}
 
-    if (firstMoves.empty()) return 20;
-    std::sort(firstMoves.begin(), firstMoves.end(), [](const Move& a, const Move& b) { return a.score > b.score; });
-    
-    // Beam search (Depth 2 for WASM performance)
-    int bestIdx = 0;
-    double bestTotal = -1e18;
-    int beamWidth = 12;
-    for(int i=0; i<std::min((int)firstMoves.size(), beamWidth); ++i) {
-        // In a real implementation, we would simulate the next piece here.
-        // For now, we use the first move's score as the primary metric.
-        if(firstMoves[i].score > bestTotal) {
-            bestTotal = firstMoves[i].score;
-            bestIdx = i;
-        }
-    }
-
-    return firstMoves[bestIdx].x * 10 + firstMoves[bestIdx].rot;
+// Legacy support
+EMSCRIPTEN_KEEPALIVE
+int ai_choose_move(int* boardData, int subColor, int mainColor, int nextSub, int nextMain) {
+    for(int i=0; i<N; ++i) sharedBoard[i] = boardData[i];
+    return ai_choose_move_v2(subColor, mainColor, nextSub, nextMain);
 }
 
 }

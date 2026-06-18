@@ -1,11 +1,12 @@
 /* puyo-ai-worker-wasm.js
- * Bridge between pp-sim2 UI and puyoAI_wasm.wasm using factory function
+ * Bridge between pp-sim2 UI and puyoAI_wasm.wasm using robust API
  */
 
 import createPuyoAI from './puyoAI_wasm.mjs';
 
 let aiInstance = null;
-let aiChooseMove = null;
+let setBoardCell = null;
+let aiChooseMoveV2 = null;
 
 function log(msg) {
     self.postMessage({ action: 'LOG', message: msg });
@@ -15,17 +16,14 @@ function log(msg) {
 async function initWasm() {
     log("WASM Module factory initialization started...");
     try {
-        // Use the exported factory function
         const module = await createPuyoAI();
         aiInstance = module;
         
-        // Ensure HEAP32 is available
-        if (aiInstance.HEAP32) {
-            aiChooseMove = aiInstance.cwrap('ai_choose_move', 'number', ['number', 'number', 'number', 'number', 'number']);
-            log("WASM AI Initialized successfully with HEAP32");
-        } else {
-            log("CRITICAL ERROR: HEAP32 still not found even after factory init");
-        }
+        // Use cwrap to get the new functions
+        setBoardCell = aiInstance.cwrap('set_board_cell', null, ['number', 'number']);
+        aiChooseMoveV2 = aiInstance.cwrap('ai_choose_move_v2', 'number', ['number', 'number', 'number', 'number']);
+        
+        log("WASM AI Initialized successfully with robust API");
     } catch (e) {
         log("CRITICAL ERROR: Factory initialization failed: " + e.message);
         console.error(e);
@@ -37,36 +35,26 @@ const wasmInitPromise = initWasm();
 self.onmessage = async function(e) {
     await wasmInitPromise;
     
-    if (!aiInstance || !aiChooseMove) {
-        log("ERROR: AI Instance or ChooseMove function not ready");
+    if (!aiChooseMoveV2 || !setBoardCell) {
+        log("ERROR: AI API functions not ready");
         return;
     }
 
     const { boardBuffer, pieceBuffer } = e.data;
 
     try {
-        // Allocate memory in WASM for board data (Int32Array)
-        const boardPtr = aiInstance._malloc(boardBuffer.length * 4);
-        if (!boardPtr) {
-            log("ERROR: Failed to allocate memory in WASM");
-            return;
+        // Transfer board data cell by cell (No HEAP32 dependency!)
+        for (let i = 0; i < boardBuffer.length; i++) {
+            setBoardCell(i, boardBuffer[i]);
         }
-        
-        // Copy data to WASM heap
-        aiInstance.HEAP32.set(boardBuffer, boardPtr >> 2);
 
-        // Call AI
-        // log("Calling WASM ai_choose_move...");
-        const result = aiChooseMove(
-            boardPtr,
+        // Call AI using the shared buffer
+        const result = aiChooseMoveV2(
             pieceBuffer[1], // sub1
             pieceBuffer[0], // main1
             pieceBuffer[3], // sub2
             pieceBuffer[2]  // main2
         );
-
-        // Free memory
-        aiInstance._free(boardPtr);
 
         // Parse result: x * 10 + rot
         const x = Math.floor(result / 10);

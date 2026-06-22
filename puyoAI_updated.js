@@ -128,6 +128,8 @@
     STATE.autoEnabled = !STATE.autoEnabled;
     if (STATE.autoEnabled) {
       initWorker();
+      // Reset turn count when starting AI
+      if (STATE.workerReady) STATE.worker.postMessage({ action: 'RESET_TURN' });
       STATE.autoTimer = setInterval(think, AI_CONFIG.AUTO_TICK_MS);
       updateStatus("AI 自動モード: ON");
     } else {
@@ -135,6 +137,14 @@
       updateStatus("AI 自動モード: OFF");
     }
     updateUI();
+  };
+
+  // Listen for game reset to reset AI turn count
+  const originalInitGame = global.initGame;
+  global.initGame = function() {
+    if (originalInitGame) originalInitGame.apply(this, arguments);
+    if (STATE.workerReady) STATE.worker.postMessage({ action: 'RESET_TURN' });
+    console.log("[AI] Game reset detected, turn count reset");
   };
 
   global.toggleAIAuto = global.toggleAI;

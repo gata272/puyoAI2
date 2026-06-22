@@ -1,5 +1,5 @@
 /* puyo-ai-worker-wasm.js
- * Bridge between pp-sim2 UI and puyoAI_wasm.wasm using robust API
+ * Bridge between pp-sim2 UI and puyoAI_wasm.wasm with GTR & Color Normalization
  */
 
 import createPuyoAI from './puyoAI_wasm.mjs';
@@ -7,6 +7,7 @@ import createPuyoAI from './puyoAI_wasm.mjs';
 let aiInstance = null;
 let setBoardCell = null;
 let aiChooseMoveV2 = null;
+let resetTurnCount = null;
 
 function log(msg) {
     self.postMessage({ action: 'LOG', message: msg });
@@ -19,11 +20,11 @@ async function initWasm() {
         const module = await createPuyoAI();
         aiInstance = module;
         
-        // Use cwrap to get the new functions
         setBoardCell = aiInstance.cwrap('set_board_cell', null, ['number', 'number']);
         aiChooseMoveV2 = aiInstance.cwrap('ai_choose_move_v2', 'number', ['number', 'number', 'number', 'number']);
+        resetTurnCount = aiInstance.cwrap('reset_turn_count', null, []);
         
-        log("WASM AI Initialized successfully with robust API");
+        log("WASM AI Initialized successfully with GTR & Color Normalization API");
     } catch (e) {
         log("CRITICAL ERROR: Factory initialization failed: " + e.message);
         console.error(e);
@@ -40,15 +41,21 @@ self.onmessage = async function(e) {
         return;
     }
 
-    const { boardBuffer, pieceBuffer } = e.data;
+    const { action, boardBuffer, pieceBuffer } = e.data;
+
+    if (action === 'RESET_TURN') {
+        resetTurnCount();
+        log("AI Turn count reset");
+        return;
+    }
 
     try {
-        // Transfer board data cell by cell (No HEAP32 dependency!)
+        // Transfer board data
         for (let i = 0; i < boardBuffer.length; i++) {
             setBoardCell(i, boardBuffer[i]);
         }
 
-        // Call AI using the shared buffer
+        // Call AI with current and next pieces
         const result = aiChooseMoveV2(
             pieceBuffer[1], // sub1
             pieceBuffer[0], // main1
@@ -56,7 +63,6 @@ self.onmessage = async function(e) {
             pieceBuffer[2]  // main2
         );
 
-        // Parse result: x * 10 + rot
         const x = Math.floor(result / 10);
         const rot = result % 10;
 

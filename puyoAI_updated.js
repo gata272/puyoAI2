@@ -20,7 +20,6 @@
 
   function initWorker() {
     if (STATE.worker) return;
-    console.log("[AI] Initializing Worker from:", AI_CONFIG.WORKER_PATH);
     STATE.worker = new Worker(AI_CONFIG.WORKER_PATH, { type: 'module' });
     STATE.worker.onmessage = function(e) {
       const { action, message, x, rotation } = e.data;
@@ -32,28 +31,58 @@
         }
       } else if (action === 'THINK_DONE') {
         console.log("[AI] Think Done. X:", x, "Rot:", rotation);
-        executeMove(x, rotation);
+        executeMoveSmoothly(x, rotation);
         STATE.busy = false;
         updateStatus("AI 待機中");
       }
     };
-    console.log("[AI] Worker object created successfully");
   }
 
-  function executeMove(x, rotation) {
-    if (typeof global.mainX !== 'undefined') {
-      global.mainX = x;
-      global.rotation = rotation;
-      if (typeof global.hardDrop === 'function') {
+  /**
+   * 地面にめり込むバグを防ぐため、変数を直接書き換えるのではなく
+   * シミュレーターの操作関数を順番に呼び出して移動を再現します。
+   */
+  async function executeMoveSmoothly(targetX, targetRot) {
+    if (typeof global.mainX === 'undefined' || typeof global.hardDrop !== 'function') return;
+
+    // 1. 回転を合わせる
+    let currentRot = global.rotation || 0;
+    while (currentRot !== targetRot) {
+      global.rotate(); // 右回転
+      currentRot = global.rotation;
+      // 無限ループ防止
+      if (currentRot === targetRot) break;
+    }
+
+    // 2. 横位置を合わせる
+    let currentX = global.mainX;
+    while (currentX !== targetX) {
+      if (currentX < targetX) {
+        global.moveRight();
+      } else {
+        global.moveLeft();
+      }
+      let nextX = global.mainX;
+      if (nextX === currentX) break; // 壁に当たった
+      currentX = nextX;
+    }
+
+    // 3. 少し待ってから落とす（当たり判定の同期を確実にするため）
+    setTimeout(() => {
+      if (global.mainX === targetX && global.rotation === targetRot) {
+        global.hardDrop();
+      } else {
+        console.warn("[AI] Move mismatch, retrying direct set...");
+        global.mainX = targetX;
+        global.rotation = targetRot;
         global.hardDrop();
       }
-    }
+    }, 50);
   }
 
   function think() {
     if (!STATE.workerReady || STATE.busy || !STATE.autoEnabled) return;
 
-    const _board = window.board;
     const _nextQueue = window.nextQueue;
     const _queueIndex = window.queueIndex;
     const _currentPuyo = window.currentPuyo;
@@ -101,10 +130,11 @@
     updateUI();
   };
 
+  // ゲームリセット時にターンカウントをリセット
   const originalInitGame = global.initGame;
   global.initGame = function() {
     if (originalInitGame) originalInitGame.apply(this, arguments);
-    if (STATE.workerReady) STATE.worker.postMessage({ action: 'RESET_TURN' });
+    if (STATE.worker) STATE.worker.postMessage({ action: 'RESET_TURN' });
     console.log("[AI] Game reset detected, turn count reset");
   };
 

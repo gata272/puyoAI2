@@ -65,13 +65,13 @@ Move getGTRMove(std::string patternKey, int turn, Puyo p, std::map<int, char>& c
     if (patternKey == "AA-AB-CD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeVertical(6,'D',p,cm); }
 
     // ABAA型
-    if (patternKey == "AB-AA-AA") { if(turn==0) return return placeVertical(3,'B',p,cm); if(turn==1) placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
+    if (patternKey == "AB-AA-AA") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
     if (patternKey == "AB-AA-AB") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(4,'A',p,cm); }
     if (patternKey == "AB-AA-AC") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(2,'C',p,cm); }
     if (patternKey == "AB-AA-BB") { if(turn==0) return placeVertical(2,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(1,'B',p,cm); }
     if (patternKey == "AB-AA-BC") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(4,'C',p,cm); }
-    if (patternKey == "AB-AA-CC") { if(turn==0) return placeVertical(3,'B',p,cm); return if(turn==1) placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
-    if (patternKey == "AB-AA-CD") { if(turn==0) return placeVertical(3,'B',p,cm); return if(turn==1) placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(6,'D',p,cm); }
+    if (patternKey == "AB-AA-CC") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
+    if (patternKey == "AB-AA-CD") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(6,'D',p,cm); }
 
     // AABB型
     if (patternKey == "AA-BB-AA") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }

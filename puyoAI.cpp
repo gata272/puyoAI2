@@ -11,12 +11,14 @@ struct Move { int col; int rot; bool valid = false; };
 // Pattern Type IDs for logging
 enum PatternType {
     NONE = 0,
-    AAAB = 1,
-    AABB = 2,
-    ABAB = 3,
-    ABAC = 4,
-    AABC = 5,
-    ABCC = 6
+    AAAA = 1,
+    AAAB = 2,
+    ABAA = 3,
+    AABB = 4,
+    ABAB = 5,
+    ABAC = 6,
+    AABC = 7,
+    ABCC = 8
 };
 
 std::map<int, char> abstractColors(Puyo p1, Puyo p2, Puyo p3) {

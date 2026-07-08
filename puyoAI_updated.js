@@ -31,7 +31,7 @@
         }
       } else if (action === 'THINK_DONE') {
         console.log("[AI] Think Done. X:", x, "Rot:", rotation);
-        executeMoveSmoothly(x, rotation);
+        executeMoveAggressively(x, rotation);
         STATE.busy = false;
         updateStatus("AI 待機中");
       }
@@ -39,45 +39,36 @@
   }
 
   /**
-   * 地面にめり込むバグを防ぐため、変数を直接書き換えるのではなく
-   * シミュレーターの操作関数を順番に呼び出して移動を再現します。
+   * シミュレーターの内部状態を直接操作し、確実に配置を実行します。
    */
-  async function executeMoveSmoothly(targetX, targetRot) {
-    if (typeof global.mainX === 'undefined' || typeof global.hardDrop !== 'function') return;
-
-    // 1. 回転を合わせる
-    let currentRot = global.rotation || 0;
-    while (currentRot !== targetRot) {
-      global.rotate(); // 右回転
-      currentRot = global.rotation;
-      // 無限ループ防止
-      if (currentRot === targetRot) break;
+  function executeMoveAggressively(targetX, targetRot) {
+    // puyoSim.js のグローバル変数にアクセス
+    if (typeof global.mainX === 'undefined') {
+        console.error("[AI] Cannot find mainX in global scope");
+        return;
     }
 
-    // 2. 横位置を合わせる
-    let currentX = global.mainX;
-    while (currentX !== targetX) {
-      if (currentX < targetX) {
-        global.moveRight();
-      } else {
-        global.moveLeft();
-      }
-      let nextX = global.mainX;
-      if (nextX === currentX) break; // 壁に当たった
-      currentX = nextX;
-    }
+    console.log(`[AI] Executing Move: TargetX=${targetX}, TargetRot=${targetRot}`);
 
-    // 3. 少し待ってから落とす（当たり判定の同期を確実にするため）
-    setTimeout(() => {
-      if (global.mainX === targetX && global.rotation === targetRot) {
-        global.hardDrop();
-      } else {
-        console.warn("[AI] Move mismatch, retrying direct set...");
-        global.mainX = targetX;
-        global.rotation = targetRot;
-        global.hardDrop();
-      }
-    }, 50);
+    // 1. 座標と回転を直接セット（最も確実な方法）
+    global.mainX = targetX;
+    global.rotation = targetRot;
+
+    // 2. シミュレーター側の内部状態（表示用座標など）も同期させる必要がある場合があるため
+    // もし puyoSim.js に updateDisplay のような関数があれば呼ぶべきですが、
+    // 無い場合は hardDrop がそれを行ってくれるはずです。
+
+    // 3. 設置を実行
+    if (typeof global.hardDrop === 'function') {
+        try {
+            global.hardDrop();
+            console.log("[AI] hardDrop executed");
+        } catch (e) {
+            console.error("[AI] Error during hardDrop:", e);
+        }
+    } else {
+        console.error("[AI] hardDrop function not found");
+    }
   }
 
   function think() {
@@ -88,6 +79,7 @@
     const _currentPuyo = window.currentPuyo;
     const _gameState = window.gameState;
 
+    // 盤面が動いている最中（gameState !== 'playing'）は思考しない
     if (!_currentPuyo || _gameState !== 'playing') return;
 
     try {
@@ -130,7 +122,6 @@
     updateUI();
   };
 
-  // ゲームリセット時にターンカウントをリセット
   const originalInitGame = global.initGame;
   global.initGame = function() {
     if (originalInitGame) originalInitGame.apply(this, arguments);

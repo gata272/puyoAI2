@@ -8,6 +8,17 @@
 struct Puyo { int main; int sub; };
 struct Move { int col; int rot; bool valid = false; };
 
+// Pattern Type IDs for logging
+enum PatternType {
+    NONE = 0,
+    AAAB = 1,
+    AABB = 2,
+    ABAB = 3,
+    ABAC = 4,
+    AABC = 5,
+    ABCC = 6
+};
+
 std::map<int, char> abstractColors(Puyo p1, Puyo p2, Puyo p3) {
     int charA_raw = p1.main;
     if (p1.main != p1.sub) {
@@ -48,83 +59,87 @@ Move placeHorizontal(int leftCol, int rightCol, char leftTargetAlpha, Puyo p, st
     return {leftCol, 1, true};
 }
 
-Move getGTRMove(std::string patternKey, int turn, Puyo p, std::map<int, char>& cm) {
-    // AAAA型
-    if (patternKey == "AA-AA-AA") { if(turn==0) return placeVertical(2,'\0',p,cm); if(turn==1) return placeVertical(4,'\0',p,cm); if(turn==2) return placeVertical(3,'\0',p,cm); }
-    if (patternKey == "AA-AA-AB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,5,'\0',p,cm); if(turn==2) return placeVertical(3,'B',p,cm); }
-    if (patternKey == "AA-AA-BB") { if(turn==0) return placeVertical(3,'\0',p,cm); if(turn==1) return placeVertical(3,'\0',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
-    if (patternKey == "AA-AA-BC") { if(turn==0) return placeVertical(3,'\0',p,cm); if(turn==1) return placeVertical(3,'\0',p,cm); if(turn==2) return placeVertical(3,'B',p,cm); }
-
+Move getGTRMove(std::string patternKey, int turn, Puyo p, std::map<int, char>& cm, int& outType) {
     // AAAB型
-    if (patternKey == "AA-AB-AA") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
-    if (patternKey == "AA-AB-AB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeVertical(4,'A',p,cm); }
-    if (patternKey == "AA-AB-AC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeVertical(2,'C',p,cm); }
-    if (patternKey == "AA-AB-BB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(2,'B',p,cm); if(turn==2) return placeVertical(1,'B',p,cm); }
-    if (patternKey == "AA-AB-BC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeVertical(4,'C',p,cm); }
-    if (patternKey == "AA-AB-CC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
-    if (patternKey == "AA-AB-CD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeVertical(6,'D',p,cm); }
-
-    // ABAA型
-    if (patternKey == "AB-AA-AA") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
-    if (patternKey == "AB-AA-AB") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(4,'A',p,cm); }
-    if (patternKey == "AB-AA-AC") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(2,'C',p,cm); }
-    if (patternKey == "AB-AA-BB") { if(turn==0) return placeVertical(2,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(1,'B',p,cm); }
-    if (patternKey == "AB-AA-BC") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(4,'C',p,cm); }
-    if (patternKey == "AB-AA-CC") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
-    if (patternKey == "AB-AA-CD") { if(turn==0) return placeVertical(3,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(6,'D',p,cm); }
+    if (patternKey.substr(0, 5) == "AA-AB") {
+        outType = AAAB;
+        if (patternKey == "AA-AB-AA") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
+        if (patternKey == "AA-AB-AB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeVertical(4,'A',p,cm); }
+        if (patternKey == "AA-AB-AC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeVertical(2,'C',p,cm); }
+        if (patternKey == "AA-AB-BB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(2,'B',p,cm); if(turn==2) return placeVertical(1,'B',p,cm); }
+        if (patternKey == "AA-AB-BC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeVertical(4,'C',p,cm); }
+        if (patternKey == "AA-AB-CC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
+        if (patternKey == "AA-AB-CD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(3,'B',p,cm); if(turn==2) return placeVertical(6,'D',p,cm); }
+    }
 
     // AABB型
-    if (patternKey == "AA-BB-AA") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
-    if (patternKey == "AA-BB-AB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(1,2,'B',p,cm); }
-    if (patternKey == "AA-BB-AC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(3,'C',p,cm); }
-    if (patternKey == "AA-BB-BB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
-    if (patternKey == "AA-BB-BC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(1,'B',p,cm); }
-    if (patternKey == "AA-BB-CC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
-    if (patternKey == "AA-BB-CD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'C',p,cm); }
+    if (patternKey.substr(0, 5) == "AA-BB") {
+        outType = AABB;
+        if (patternKey == "AA-BB-AA") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
+        if (patternKey == "AA-BB-AB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(1,2,'B',p,cm); }
+        if (patternKey == "AA-BB-AC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(3,'C',p,cm); }
+        if (patternKey == "AA-BB-BB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
+        if (patternKey == "AA-BB-BC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(1,'B',p,cm); }
+        if (patternKey == "AA-BB-CC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
+        if (patternKey == "AA-BB-CD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'C',p,cm); }
+    }
 
     // ABAB型
-    if (patternKey == "AB-AB-AA") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
-    if (patternKey == "AB-AB-AB") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeHorizontal(1,2,'B',p,cm); }
-    if (patternKey == "AB-AB-AC") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeVertical(3,'C',p,cm); }
-    if (patternKey == "AB-AB-BB") { if(turn==0) return placeVertical(1,'B',p,cm); if(turn==1) return placeVertical(2,'B',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
-    if (patternKey == "AB-AB-BC") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeVertical(1,'B',p,cm); }
-    if (patternKey == "AB-AB-CC") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
-    if (patternKey == "AB-AB-CD") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
+    if (patternKey.substr(0, 5) == "AB-AB") {
+        outType = ABAB;
+        if (patternKey == "AB-AB-AA") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
+        if (patternKey == "AB-AB-AB") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeHorizontal(1,2,'B',p,cm); }
+        if (patternKey == "AB-AB-AC") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeVertical(3,'C',p,cm); }
+        if (patternKey == "AB-AB-BB") { if(turn==0) return placeVertical(1,'B',p,cm); if(turn==1) return placeVertical(2,'B',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
+        if (patternKey == "AB-AB-BC") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeVertical(1,'B',p,cm); }
+        if (patternKey == "AB-AB-CC") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeHorizontal(4,5,'\0',p,cm); }
+        if (patternKey == "AB-AB-CD") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeVertical(2,'A',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
+    }
 
     // ABAC型
-    if (patternKey == "AB-AC-AA") { if(turn==0) return placeHorizontal(2,3,'A',p,cm); if(turn==1) return placeVertical(1,'A',p,cm); if(turn==2) return placeHorizontal(3,4,'\0',p,cm); }
-    if (patternKey == "AB-AC-AB") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeHorizontal(2,3,'A',p,cm); if(turn==2) return placeHorizontal(2,3,'B',p,cm); }
-    if (patternKey == "AB-AC-AC") { if(turn==0) return placeHorizontal(2,3,'A',p,cm); if(turn==1) return placeVertical(1,'A',p,cm); if(turn==2) return placeHorizontal(2,3,'C',p,cm); }
-    if (patternKey == "AB-AC-AD") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeHorizontal(2,3,'A',p,cm); if(turn==2) return placeHorizontal(3,4,'A',p,cm); }
-    if (patternKey == "AB-AC-BB") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeHorizontal(2,3,'A',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
-    if (patternKey == "AB-AC-BC") { if(turn==0) return placeHorizontal(2,3,'A',p,cm); if(turn==1) return placeVertical(1,'A',p,cm); if(turn==2) return placeVertical(4,'B',p,cm); }
-    if (patternKey == "AB-AC-BD") { if(turn==0) return placeHorizontal(2,3,'A',p,cm); if(turn==1) return placeVertical(1,'A',p,cm); if(turn==2) return placeVertical(4,'D',p,cm); }
-    if (patternKey == "AB-AC-CC") { if(turn==0) return placeVertical(4,'B',p,cm); if(turn==1) return placeVertical(3,'A',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
-    if (patternKey == "AB-AC-CD") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeHorizontal(2,3,'A',p,cm); if(turn==2) return placeVertical(4,'C',p,cm); }
+    if (patternKey.substr(0, 5) == "AB-AC") {
+        outType = ABAC;
+        if (patternKey == "AB-AC-AA") { if(turn==0) return placeHorizontal(2,3,'A',p,cm); if(turn==1) return placeVertical(1,'A',p,cm); if(turn==2) return placeHorizontal(3,4,'\0',p,cm); }
+        if (patternKey == "AB-AC-AB") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeHorizontal(2,3,'A',p,cm); if(turn==2) return placeHorizontal(2,3,'B',p,cm); }
+        if (patternKey == "AB-AC-AC") { if(turn==0) return placeHorizontal(2,3,'A',p,cm); if(turn==1) return placeVertical(1,'A',p,cm); if(turn==2) return placeHorizontal(2,3,'C',p,cm); }
+        if (patternKey == "AB-AC-AD") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeHorizontal(2,3,'A',p,cm); if(turn==2) return placeHorizontal(3,4,'A',p,cm); }
+        if (patternKey == "AB-AC-BB") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeHorizontal(2,3,'A',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
+        if (patternKey == "AB-AC-BC") { if(turn==0) return placeHorizontal(2,3,'A',p,cm); if(turn==1) return placeVertical(1,'A',p,cm); if(turn==2) return placeVertical(4,'B',p,cm); }
+        if (patternKey == "AB-AC-BD") { if(turn==0) return placeHorizontal(2,3,'A',p,cm); if(turn==1) return placeVertical(1,'A',p,cm); if(turn==2) return placeVertical(4,'D',p,cm); }
+        if (patternKey == "AB-AC-CC") { if(turn==0) return placeVertical(4,'B',p,cm); if(turn==1) return placeVertical(3,'A',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
+        if (patternKey == "AB-AC-CD") { if(turn==0) return placeVertical(1,'A',p,cm); if(turn==1) return placeHorizontal(2,3,'A',p,cm); if(turn==2) return placeVertical(4,'C',p,cm); }
+    }
 
     // AABC型
-    if (patternKey == "AA-BC-AA") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(3,2,'B',p,cm); if(turn==2) return placeHorizontal(2,3,'\0',p,cm); }
-    if (patternKey == "AA-BC-AB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'B',p,cm); if(turn==2) return placeHorizontal(5,6,'B',p,cm); }
-    if (patternKey == "AA-BC-AC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'C',p,cm); if(turn==2) return placeHorizontal(5,6,'C',p,cm); }
-    if (patternKey == "AA-BC-AD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(3,4,'B',p,cm); if(turn==2) return placeHorizontal(2,3,'A',p,cm); }
-    if (patternKey == "AA-BC-BB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'B',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
-    if (patternKey == "AA-BC-BC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'B',p,cm); if(turn==2) return placeVertical(5,'B',p,cm); }
-    if (patternKey == "AA-BC-BD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(1,'B',p,cm); if(turn==2) return placeHorizontal(2,3,'B',p,cm); }
-    if (patternKey == "AA-BC-CC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(2,3,'C',p,cm); if(turn==2) return placeVertical(1,'C',p,cm); }
-    if (patternKey == "AA-BC-CD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'C',p,cm); if(turn==2) return placeHorizontal(5,6,'C',p,cm); }
+    if (patternKey.substr(0, 5) == "AA-BC") {
+        outType = AABC;
+        if (patternKey == "AA-BC-AA") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(3,2,'B',p,cm); if(turn==2) return placeHorizontal(2,3,'\0',p,cm); }
+        if (patternKey == "AA-BC-AB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'B',p,cm); if(turn==2) return placeHorizontal(5,6,'B',p,cm); }
+        if (patternKey == "AA-BC-AC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'C',p,cm); if(turn==2) return placeHorizontal(5,6,'C',p,cm); }
+        if (patternKey == "AA-BC-AD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(3,4,'B',p,cm); if(turn==2) return placeHorizontal(2,3,'A',p,cm); }
+        if (patternKey == "AA-BC-BB") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'B',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
+        if (patternKey == "AA-BC-BC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'B',p,cm); if(turn==2) return placeVertical(5,'B',p,cm); }
+        if (patternKey == "AA-BC-BD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeVertical(1,'B',p,cm); if(turn==2) return placeHorizontal(2,3,'B',p,cm); }
+        if (patternKey == "AA-BC-CC") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(2,3,'C',p,cm); if(turn==2) return placeVertical(1,'C',p,cm); }
+        if (patternKey == "AA-BC-CD") { if(turn==0) return placeHorizontal(1,2,'\0',p,cm); if(turn==1) return placeHorizontal(4,3,'C',p,cm); if(turn==2) return placeHorizontal(5,6,'C',p,cm); }
+    }
 
     // ABCC型
-    if (patternKey == "AB-CC-AA") { if(turn==0) return placeHorizontal(3,4,'A',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
-    if (patternKey == "AB-CC-AB") { if(turn==0) return placeVertical(4,'A',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(5,'A',p,cm); }
-    if (patternKey == "AB-CC-AC") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(3,4,'A',p,cm); }
-    if (patternKey == "AB-CC-AD") { if(turn==0) return placeHorizontal(3,4,'A',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'A',p,cm); }
-    if (patternKey == "AB-CC-BB") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
-    if (patternKey == "AB-CC-BC") { if(turn==0) return placeHorizontal(3,4,'A',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(3,4,'B',p,cm); }
-    if (patternKey == "AB-CC-BD") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'B',p,cm); }
-    if (patternKey == "AB-CC-CC") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
-    if (patternKey == "AB-CC-CD") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(2,3,'C',p,cm); }
-    if (patternKey == "AB-CC-DD") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
+    if (patternKey.substr(0, 5) == "AB-CC") {
+        outType = ABCC;
+        if (patternKey == "AB-CC-AA") { if(turn==0) return placeHorizontal(3,4,'A',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
+        if (patternKey == "AB-CC-AB") { if(turn==0) return placeVertical(4,'A',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeVertical(5,'A',p,cm); }
+        if (patternKey == "AB-CC-AC") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(3,4,'A',p,cm); }
+        if (patternKey == "AB-CC-AD") { if(turn==0) return placeHorizontal(3,4,'A',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'A',p,cm); }
+        if (patternKey == "AB-CC-BB") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
+        if (patternKey == "AB-CC-BC") { if(turn==0) return placeHorizontal(3,4,'A',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(3,4,'B',p,cm); }
+        if (patternKey == "AB-CC-BD") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'B',p,cm); }
+        if (patternKey == "AB-CC-CC") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(5,6,'\0',p,cm); }
+        if (patternKey == "AB-CC-CD") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(2,3,'C',p,cm); }
+        if (patternKey == "AB-CC-DD") { if(turn==0) return placeHorizontal(3,4,'B',p,cm); if(turn==1) return placeHorizontal(1,2,'\0',p,cm); if(turn==2) return placeHorizontal(1,2,'\0',p,cm); }
+    }
 
+    outType = NONE;
     return {0, 0, false};
 }
 
@@ -137,8 +152,13 @@ EMSCRIPTEN_KEEPALIVE int ai_choose_move_v2(int sub1, int main1, int sub2, int ma
     std::map<int, char> cm = abstractColors(p1, p2, p3);
     std::string patternKey = getPattern(p1, cm) + "-" + getPattern(p2, cm) + "-" + getPattern(p3, cm);
     Puyo currentPuyo = (turnCount == 0) ? p1 : (turnCount == 1 ? p2 : p3);
-    Move m = getGTRMove(patternKey, turnCount, currentPuyo, cm);
-    if (m.valid) { turnCount++; return (m.col - 1) * 10 + m.rot; }
+    int patternType = 0;
+    Move m = getGTRMove(patternKey, turnCount, currentPuyo, cm, patternType);
+    if (m.valid) { 
+        turnCount++; 
+        // Return: (x * 100) + (rot * 10) + patternType
+        return (m.col - 1) * 100 + m.rot * 10 + patternType; 
+    }
     return -1;
 }
 EMSCRIPTEN_KEEPALIVE void set_board_cell(int index, int value) {}

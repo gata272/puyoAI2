@@ -2,19 +2,26 @@ name: Build and Deploy WASM AI
 
 on:
   push:
-    branches: [ main ]  # mainブランチにpushされた時に実行
-  workflow_dispatch:      # 手動実行も可能にする
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Emscripten
         run: |
@@ -24,15 +31,24 @@ jobs:
           ./emsdk activate latest
 
       - name: Build WASM
+        shell: bash
         run: |
-          # Emscripten環境を有効化してビルド
           source emsdk/emsdk_env.sh
-          emcc puyoAI.cpp -O3 \
+
+          emcc puyoAI.cpp \
+            -O3 \
             -sMODULARIZE=1 \
             -sEXPORT_ES6=1 \
             -sALLOW_MEMORY_GROWTH=1 \
-            -sEXPORTED_FUNCTIONS='["_malloc","_free","_ai_choose_move"]' \
-            -sEXPORTED_RUNTIME_METHODS='["cwrap"]' \
+            -sEXPORTED_FUNCTIONS='[
+              "_malloc",
+              "_free",
+              "_ai_choose_move_v2",
+              "_reset_turn_count"
+            ]' \
+            -sEXPORTED_RUNTIME_METHODS='[
+              "cwrap"
+            ]' \
             -o puyoAI_wasm.mjs
 
       - name: Setup Pages
@@ -41,8 +57,17 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'  # リポジトリの全ファイルをデプロイ対象にする
+          path: .
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

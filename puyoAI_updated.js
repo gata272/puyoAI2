@@ -38,25 +38,22 @@
     };
   }
 
-  /**
-   * シミュレーターの内部状態を直接操作し、確実に配置を実行します。
-   */
   function executeMoveAggressively(targetX, targetRot) {
-    // puyoSim.js のグローバル変数にアクセス
-    if (typeof global.mainX === 'undefined') {
-        console.error("[AI] Cannot find mainX in global scope");
+    // puyoSim.js から window にエクスポートされた変数を参照
+    if (!global.currentPuyo) {
+        console.error("[AI] Cannot find currentPuyo in global scope");
         return;
     }
 
     console.log(`[AI] Executing Move: TargetX=${targetX}, TargetRot=${targetRot}`);
 
-    // 1. 座標と回転を直接セット（最も確実な方法）
-    global.mainX = targetX;
-    global.rotation = targetRot;
-
-    // 2. シミュレーター側の内部状態（表示用座標など）も同期させる必要がある場合があるため
-    // もし puyoSim.js に updateDisplay のような関数があれば呼ぶべきですが、
-    // 無い場合は hardDrop がそれを行ってくれるはずです。
+    // 1. currentPuyo の内部状態を直接書き換え
+    global.currentPuyo.mainX = targetX;
+    global.currentPuyo.rotation = targetRot;
+    
+    // 2. グローバル変数側も同期（念のため）
+    if (typeof global.mainX !== 'undefined') global.mainX = targetX;
+    if (typeof global.rotation !== 'undefined') global.rotation = targetRot;
 
     // 3. 設置を実行
     if (typeof global.hardDrop === 'function') {
@@ -74,12 +71,11 @@
   function think() {
     if (!STATE.workerReady || STATE.busy || !STATE.autoEnabled) return;
 
-    const _nextQueue = window.nextQueue;
-    const _queueIndex = window.queueIndex;
-    const _currentPuyo = window.currentPuyo;
-    const _gameState = window.gameState;
+    const _nextQueue = global.nextQueue;
+    const _queueIndex = global.queueIndex;
+    const _currentPuyo = global.currentPuyo;
+    const _gameState = global.gameState;
 
-    // 盤面が動いている最中（gameState !== 'playing'）は思考しない
     if (!_currentPuyo || _gameState !== 'playing') return;
 
     try {

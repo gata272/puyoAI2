@@ -1701,3 +1701,20 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeGame();
     window.addEventListener('resize', checkMobileControlsVisibility);
 });
+
+// AI連携用のグローバルエクスポート
+(function() {
+    setInterval(() => {
+        if (typeof currentPuyo !== 'undefined' && currentPuyo) {
+            window.currentPuyo = currentPuyo;
+            window.mainX = currentPuyo.mainX;
+            window.rotation = currentPuyo.rotation;
+        }
+        if (typeof board !== 'undefined') window.board = board;
+        if (typeof gameState !== 'undefined') window.gameState = gameState;
+        if (typeof nextQueue !== 'undefined') window.nextQueue = nextQueue;
+        if (typeof queueIndex !== 'undefined') window.queueIndex = queueIndex;
+        if (typeof hardDrop === 'function') window.hardDrop = hardDrop;
+        if (typeof initGame === 'function') window.initGame = initGame;
+    }, 100);
+})();

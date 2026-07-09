@@ -8,7 +8,7 @@ let aiInstance = null;
 let aiChooseMoveV2 = null;
 let resetTurnCount = null;
 
-const PATTERN_NAMES = ["NONE", "AAAB型", "AABB型", "ABAB型", "ABAC型", "AABC型", "ABCC型"];
+const PATTERN_NAMES = ["NONE", "AAAA型", "AAAB型", "ABAA型", "AABB型", "ABAB型", "ABAC型", "AABC型", "ABCC型"];
 
 function log(msg) {
     self.postMessage({ action: 'LOG', message: msg });

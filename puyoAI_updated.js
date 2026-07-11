@@ -9,7 +9,8 @@
     workerReady: false,
     autoEnabled: false,
     autoTimer: null,
-    busy: false
+    busy: false,
+    currentTurn: 0
   };
 
   function updateStatus(msg) {
@@ -33,39 +34,29 @@
         console.log("[AI] Think Done. X:", x, "Rot:", rotation);
         executeMoveAggressively(x, rotation);
         STATE.busy = false;
+        STATE.currentTurn++;
         updateStatus("AI 待機中");
       }
     };
   }
 
   function executeMoveAggressively(targetX, targetRot) {
-    // puyoSim.js から window にエクスポートされた変数を参照
-    if (!global.currentPuyo) {
-        console.error("[AI] Cannot find currentPuyo in global scope");
-        return;
-    }
-
-    console.log(`[AI] Executing Move: TargetX=${targetX}, TargetRot=${targetRot}`);
-
-    // 1. currentPuyo の内部状態を直接書き換え
+    if (!global.currentPuyo) return;
     global.currentPuyo.mainX = targetX;
     global.currentPuyo.rotation = targetRot;
-    
-    // 2. グローバル変数側も同期（念のため）
     if (typeof global.mainX !== 'undefined') global.mainX = targetX;
     if (typeof global.rotation !== 'undefined') global.rotation = targetRot;
+    if (typeof global.hardDrop === 'function') global.hardDrop();
+  }
 
-    // 3. 設置を実行
-    if (typeof global.hardDrop === 'function') {
-        try {
-            global.hardDrop();
-            console.log("[AI] hardDrop executed");
-        } catch (e) {
-            console.error("[AI] Error during hardDrop:", e);
-        }
-    } else {
-        console.error("[AI] hardDrop function not found");
+  function isBoardEmpty() {
+    if (!global.board) return true;
+    for (let y = 0; y < global.board.length; y++) {
+      for (let x = 0; x < global.board[y].length; x++) {
+        if (global.board[y][x] !== 0) return false;
+      }
     }
+    return true;
   }
 
   function think() {
@@ -77,6 +68,16 @@
     const _gameState = global.gameState;
 
     if (!_currentPuyo || _gameState !== 'playing') return;
+
+    // 盤面が空でない、かつGTRの途中（1-3手目）でもない場合は何もしない
+    if (STATE.currentTurn === 0 && !isBoardEmpty()) {
+        return;
+    }
+    
+    // 3手終わったら停止
+    if (STATE.currentTurn >= 3) {
+        return;
+    }
 
     try {
         const pieces = new Int32Array(6);
@@ -108,7 +109,7 @@
     STATE.autoEnabled = !STATE.autoEnabled;
     if (STATE.autoEnabled) {
       initWorker();
-      if (STATE.workerReady) STATE.worker.postMessage({ action: 'RESET_TURN' });
+      resetAIState();
       STATE.autoTimer = setInterval(think, AI_CONFIG.AUTO_TICK_MS);
       updateStatus("AI 自動モード: ON");
     } else {
@@ -118,11 +119,17 @@
     updateUI();
   };
 
+  function resetAIState() {
+    STATE.currentTurn = 0;
+    if (STATE.worker) STATE.worker.postMessage({ action: 'RESET_TURN' });
+    console.log("[AI] AI State Reset");
+  }
+
+  // シミュレーターのリセットを検知
   const originalInitGame = global.initGame;
   global.initGame = function() {
     if (originalInitGame) originalInitGame.apply(this, arguments);
-    if (STATE.worker) STATE.worker.postMessage({ action: 'RESET_TURN' });
-    console.log("[AI] Game reset detected, turn count reset");
+    resetAIState();
   };
 
   function updateUI() {

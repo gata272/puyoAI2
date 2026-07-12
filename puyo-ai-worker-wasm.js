@@ -1,13 +1,12 @@
 /* puyo-ai-worker-wasm.js
- * GTR-Only AI Bridge with Pattern Logging (Stateless Version)
+ * GTR-Only AI Bridge
  */
 
 import createPuyoAI from './puyoAI_wasm.mjs';
 
 let aiInstance = null;
 let aiChooseMoveV2 = null;
-
-const PATTERN_NAMES = ["NONE", "AAAB型", "AABB型", "ABAB型", "ABAC型", "AABC型", "ABCC型"];
+let resetTurnCount = null;
 
 function log(msg) {
     self.postMessage({ action: 'LOG', message: msg });
@@ -18,8 +17,12 @@ async function initWasm() {
     try {
         const module = await createPuyoAI();
         aiInstance = module;
-        // ai_choose_move_v2(turn, sub1, main1, sub2, main2, sub3, main3)
-        aiChooseMoveV2 = aiInstance.cwrap('ai_choose_move_v2', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number']);
+        aiChooseMoveV2 = aiInstance.cwrap(
+            'ai_choose_move_v2',
+            'number',
+            ['number', ['number', 'number', 'number', 'number', 'number', 'number']]
+        );
+        resetTurnCount = aiInstance.cwrap('reset_turn_count', null, []);
         log("WASM GTR-Only AI Initialized successfully");
     } catch (e) {
         log("CRITICAL ERROR: Factory initialization failed: " + e.message);
@@ -30,11 +33,14 @@ const wasmInitPromise = initWasm();
 
 self.onmessage = async function(e) {
     await wasmInitPromise;
-    
+
     const { action, pieceBuffer, turn } = e.data;
 
     if (action === 'RESET_TURN') {
-        log("AI Turn count reset (handled by JS)");
+        if (resetTurnCount) {
+            resetTurnCount();
+        }
+        log("AI Turn count reset");
         return;
     }
 
@@ -52,20 +58,14 @@ self.onmessage = async function(e) {
                 return;
             }
 
-            // Parse result: (x * 100) + (rot * 10) + patternType
-            const x = Math.floor(result / 100);
-            const rot = Math.floor((result % 100) / 10);
-            const typeIdx = result % 10;
-
-            if (typeIdx > 0) {
-                log("Pattern Detected: " + PATTERN_NAMES[typeIdx] + " (Turn: " + turn + ")");
-            }
+            // Result format: x * 10 + rot
+            const x = Math.floor(result / 10);
+            const rot = result % 10;
 
             self.postMessage({
                 action: 'THINK_DONE',
                 x: x,
-                rotation: rot,
-                patternName: PATTERN_NAMES[typeIdx]
+                rotation: rot
             });
         } catch (err) {
             log("ERROR during WASM execution: " + err.message);

@@ -32,7 +32,7 @@
         }
       } else if (action === 'THINK_DONE') {
         console.log("[AI] Think Done. X:", x, "Rot:", rotation);
-        executeMoveAggressively(x, rotation);
+        executeMoveSafely(x, rotation);
         STATE.busy = false;
         STATE.currentTurn++;
         updateStatus("AI 待機中");
@@ -40,13 +40,32 @@
     };
   }
 
-  function executeMoveAggressively(targetX, targetRot) {
+  /**
+   * ぷよが消えるのを防ぐため、座標をセットした後にわずかな待ち時間を置いてから設置します。
+   */
+  async function executeMoveSafely(targetX, targetRot) {
     if (!global.currentPuyo) return;
+
+    console.log(`[AI] Executing Move: TargetX=${targetX}, TargetRot=${targetRot}, Turn=${STATE.currentTurn}`);
+
+    // 1. 座標と回転をセット
     global.currentPuyo.mainX = targetX;
     global.currentPuyo.rotation = targetRot;
     if (typeof global.mainX !== 'undefined') global.mainX = targetX;
     if (typeof global.rotation !== 'undefined') global.rotation = targetRot;
-    if (typeof global.hardDrop === 'function') global.hardDrop();
+
+    // 2. シミュレーターが位置を認識するまでわずかに待機（めり込み・消滅防止）
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // 3. 設置を実行
+    if (typeof global.hardDrop === 'function') {
+        try {
+            global.hardDrop();
+            console.log("[AI] hardDrop executed");
+        } catch (e) {
+            console.error("[AI] Error during hardDrop:", e);
+        }
+    }
   }
 
   function isBoardEmpty() {
@@ -97,7 +116,8 @@
         updateStatus("AI 思考中...");
         STATE.worker.postMessage({
           action: 'THINK',
-          pieceBuffer: pieces
+          pieceBuffer: pieces,
+          turn: STATE.currentTurn
         });
     } catch (err) {
         console.error("[AI] Error in think loop:", err);
@@ -125,7 +145,6 @@
     console.log("[AI] AI State Reset");
   }
 
-  // シミュレーターのリセットを検知
   const originalInitGame = global.initGame;
   global.initGame = function() {
     if (originalInitGame) originalInitGame.apply(this, arguments);

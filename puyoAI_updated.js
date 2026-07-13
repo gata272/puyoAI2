@@ -23,7 +23,8 @@
     if (STATE.worker) return;
     STATE.worker = new Worker(AI_CONFIG.WORKER_PATH, { type: 'module' });
     STATE.worker.onmessage = function(e) {
-      const { action, message, x, rotation } = e.data;
+      // ★修正：引数に patternName を追加
+      const { action, message, x, rotation, patternName } = e.data;
       if (action === 'LOG') {
         console.log("[AI Worker Log]:", message);
         if (message.includes("Initialized successfully")) {
@@ -32,10 +33,18 @@
         }
       } else if (action === 'THINK_DONE') {
         console.log("[AI] Think Done. X:", x, "Rot:", rotation);
+        
+        // ★追加：型名が取得できており、かつ "NONE" ではない場合にコンソールとUIに表示
+        if (patternName && patternName !== "NONE") {
+          console.log(`%c[AI GTR Pattern Detected]: ${patternName}`, "color: #4CAF50; font-weight: bold; font-size: 14px;");
+          updateStatus(`AI 待機中 (${patternName})`);
+        } else {
+          updateStatus("AI 待機中");
+        }
+
         executeMoveSafely(x, rotation);
         STATE.busy = false;
         STATE.currentTurn++;
-        updateStatus("AI 待機中");
       }
     };
   }

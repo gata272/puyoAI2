@@ -24,6 +24,8 @@ enum PatternType {
     ABAC = 4,
     AABC = 5,
     ABCC = 6
+    AAAA = 7
+    ABAA = 8
 };
 
 static PatternType lockedType = NONE;
@@ -65,6 +67,8 @@ static const char* patternTypeName(PatternType t) {
         case ABAC: return "ABAC型";
         case AABC: return "AABC型";
         case ABCC: return "ABCC型";
+        case AAAA: return "AAAA型";
+        case ABAA: return "ABAA型";
         default:   return "NONE";
     }
 }
@@ -129,6 +133,8 @@ PatternType detectPatternType(const std::string& patternKey) {
     if (patternKey.rfind("AB-AC", 0) == 0) return ABAC;
     if (patternKey.rfind("AA-BC", 0) == 0) return AABC;
     if (patternKey.rfind("AB-CC", 0) == 0) return ABCC;
+    if (patternKey.rfind("AA-AA", 0) == 0) return AAAA;
+    if (patternKey.rfind("AB-AA", 0) == 0) return ABAA;
     return NONE;
 }
 
@@ -227,6 +233,23 @@ static bool buildLockedPlan(
             if (patternKey == "AB-CC-CC") { set(0, resolveHorizontalMove(3, 4, 'B', p1, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p2, cm)); set(2, resolveHorizontalMove(5, 6, '\0', p3, cm)); ok = true; }
             if (patternKey == "AB-CC-CD") { set(0, resolveHorizontalMove(3, 4, 'B', p1, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p2, cm)); set(2, resolveHorizontalMove(2, 3, 'C', p3, cm)); ok = true; }
             if (patternKey == "AB-CC-DD") { set(0, resolveHorizontalMove(3, 4, 'B', p1, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p2, cm)); set(2, resolveHorizontalMove(1, 2, '\0', p3, cm)); ok = true; }
+            break;
+
+        case AAAA:
+            if (patternKey == "AA-AA-AA") { set(0, resolveVerticalMove(2, '\0', p1, cm)); set(1, resolveVerticalMove(4, '\0', p2, cm)); set(2, resolveVerticalMove(3, '\0', p3, cm)); ok = true; }
+            if (patternKey == "AA-AA-AB") { set(0, resolveVerticalMove(3, '\0', p1, cm)); set(1, resolveVerticalMove(3, '\0', p2, cm)); set(2, resolveHorizontalMove(1, 2, 'A', p3, cm)); ok = true; }
+            if (patternKey == "AA-AA-BB") { set(0, resolveVerticalMove(3, '\0', p1, cm)); set(1, resolveVerticalMove(3, '\0', p2, cm)); set(2, resolveHorizontalMove(1, 2, '\0', p3, cm)); ok = true; }
+            if (patternKey == "AA-AA-BC") { set(0, resolveVerticalMove(3, '\0', p1, cm)); set(1, resolveVerticalMove(3, '\0', p2, cm)); set(2, resolveHorizontalMove(1, 2, 'B', p3, cm)); ok = true; }
+            break;
+
+        case ABAA:
+            if (patternKey == "AB-AA-AA") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveHorizontalMove(4, 5, '\0', p3, cm)); ok = true; }
+            if (patternKey == "AB-AA-AB") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(4, 'A', p3, cm)); ok = true; }
+            if (patternKey == "AB-AA-AC") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(2, 'C', p3, cm)); ok = true; }
+            if (patternKey == "AB-AA-BB") { set(0, resolveVerticalMove(2, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(1, 'B', p3, cm)); ok = true; }
+            if (patternKey == "AB-AA-BC") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(4, 'C', p3, cm)); ok = true; }
+            if (patternKey == "AB-AA-CC") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveHorizontalMove(1, 2, '\0', p3, cm)); ok = true; }
+            if (patternKey == "AB-AA-CD") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(6, 'D', p3, cm)); ok = true; }
             break;
 
         default:

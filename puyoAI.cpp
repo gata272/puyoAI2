@@ -246,7 +246,7 @@ static bool buildLockedPlan(
             if (patternKey == "AB-AA-AA") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveHorizontalMove(4, 5, '\0', p3, cm)); ok = true; }
             if (patternKey == "AB-AA-AB") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(4, 'A', p3, cm)); ok = true; }
             if (patternKey == "AB-AA-AC") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(2, 'C', p3, cm)); ok = true; }
-            if (patternKey == "AB-AA-BB") { set(0, resolveVerticalMove(2, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(1, 'B', p3, cm)); ok = true; }
+            if (patternKey == "AB-AA-BB") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveHorizontalMove(1, 2, '\0', p3, cm)); ok = true; }
             if (patternKey == "AB-AA-BC") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(4, 'C', p3, cm)); ok = true; }
             if (patternKey == "AB-AA-CC") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveHorizontalMove(1, 2, '\0', p3, cm)); ok = true; }
             if (patternKey == "AB-AA-CD") { set(0, resolveVerticalMove(3, 'B', p2, cm)); set(1, resolveHorizontalMove(1, 2, '\0', p1, cm)); set(2, resolveVerticalMove(6, 'D', p3, cm)); ok = true; }

@@ -51,10 +51,10 @@ static Move resolveVerticalMove(int col1Based, char bottomTargetAlpha, const Puy
 }
 
 static Move resolveHorizontalMove(int leftCol1Based, int rightCol1Based, char leftTargetAlpha, const Puyo& p, const std::map<int, char>& cm) {
-    if (leftTargetAlpha == '\0') return makeMove(leftCol1Based, 1);
-    if (cm.at(p.main) == leftTargetAlpha) return makeMove(leftCol1Based, 1);
-    if (cm.at(p.sub) == leftTargetAlpha) return makeMove(rightCol1Based, 3);
-    return makeMove(leftCol1Based, 1);
+    if (leftTargetAlpha == '\0') return makeMove(leftCol1Based, 3);
+    if (cm.at(p.main) == leftTargetAlpha) return makeMove(leftCol1Based, 3); // mainを左、subを右(3)に配置
+    if (cm.at(p.sub) == leftTargetAlpha) return makeMove(rightCol1Based, 1);  // subを左、mainを右(1)に配置
+    return makeMove(leftCol1Based, 3);
 }
 
 static const char* patternTypeName(PatternType t) {
@@ -247,6 +247,11 @@ void reset_turn_count() {
     lockedType = NONE;
     lockedPlanReady = false;
     clearLockedPlan();
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char* get_locked_pattern_name() {
+    return patternTypeName(lockedType);
 }
 
 EMSCRIPTEN_KEEPALIVE

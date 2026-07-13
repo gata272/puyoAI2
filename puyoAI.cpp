@@ -23,9 +23,9 @@ enum PatternType {
     ABAB = 3,
     ABAC = 4,
     AABC = 5,
-    ABCC = 6
-    AAAA = 7
-    ABAA = 8
+    ABCC = 6,
+    AAAA = 7,
+    ABAA = 8,
 };
 
 static PatternType lockedType = NONE;
